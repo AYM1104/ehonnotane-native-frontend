@@ -104,6 +104,8 @@ class GoogleOAuthService: ObservableObject {
             idToken = credentials.idToken
             errorMessage = nil
             
+            print("🔍 handleAuthResult: 認証成功")
+            
             // IDトークンからユーザー情報を取得
             extractUserInfoFromIdToken(credentials.idToken)
             
@@ -122,21 +124,106 @@ class GoogleOAuthService: ObservableObject {
     }
     #endif
     
-    /// IDトークンからユーザー情報を抽出
+    /// IDトークンからユーザー情報を抽出・Supabaseに登録
     private func extractUserInfoFromIdToken(_ idToken: String) {
+        print("🔍 extractUserInfoFromIdToken開始")
+        
         // JWTのペイロード部分をデコード（簡易実装）
         // 実際の実装では、JWTライブラリを使用することを推奨
-        if let data = Data(base64Encoded: idToken.components(separatedBy: ".")[1]),
-           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+        let tokenParts = idToken.components(separatedBy: ".")
+        print("🔍 JWTトークン解析: \(tokenParts.count) parts")
+        
+        if tokenParts.count >= 2 {
+            // Base64URLデコード（パディングを追加）
+            var payloadString = tokenParts[1]
+            let remainder = payloadString.count % 4
+            if remainder > 0 {
+                payloadString += String(repeating: "=", count: 4 - remainder)
+            }
             
-            userEmail = json["email"] as? String
-            userName = json["name"] as? String
-            userPicture = json["picture"] as? String
+            print("🔍 デコード対象: \(payloadString)")
             
-            print("📧 Googleユーザー情報取得:")
-            print("  Email: \(userEmail ?? "なし")")
-            print("  Name: \(userName ?? "なし")")
-            print("  Picture: \(userPicture ?? "なし")")
+            if let data = Data(base64Encoded: payloadString),
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                print("✅ JWTデコード成功")
+                
+                // Auth0のユーザーID（sub）を取得
+                let auth0UserId = json["sub"] as? String
+                let userEmail = json["email"] as? String
+                let userName = json["name"] as? String
+                let userPicture = json["picture"] as? String
+                
+                // ユーザー情報を設定
+                self.userEmail = userEmail
+                self.userName = userName
+                self.userPicture = userPicture
+                
+                print("📧 Googleユーザー情報取得:")
+                print("  UserID: \(auth0UserId ?? "なし")")
+                print("  Email: \(userEmail ?? "なし")")
+                print("  Name: \(userName ?? "なし")")
+                print("  Picture: \(userPicture ?? "なし")")
+                
+                // UserDefaultsにAuth0ユーザーIDを保存
+                if let userId = auth0UserId {
+                    UserDefaults.standard.set(userId, forKey: "auth0_user_id")
+                    print("✅ Auth0ユーザーID保存: \(userId)")
+                    
+                    // Supabaseにユーザー情報を登録
+                    Task {
+                        await registerUserToSupabase(
+                            auth0UserId: userId,
+                            userName: userName ?? "",
+                            email: userEmail ?? ""
+                        )
+                    }
+                }
+            } else {
+                print("❌ JWTデコード失敗")
+            }
+        } else {
+            print("❌ JWTトークン形式エラー: パーツ数不足")
+        }
+    }
+    
+    /// Supabaseにユーザー情報を登録
+    private func registerUserToSupabase(auth0UserId: String, userName: String, email: String) async {
+        let baseURL = ProcessInfo.processInfo.environment["NEXT_PUBLIC_API_URL"] ?? "http://localhost:8000"
+        
+        guard let url = URL(string: "\(baseURL)/users/") else {
+            print("❌ Supabaseユーザー登録URLエラー")
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        // リクエストボディを作成（Auth0のユーザーIDを主キーとして使用）
+        let userData: [String: Any] = [
+            "id": auth0UserId,  // Auth0のユーザーIDをSupabaseの主キーとして使用
+            "user_name": userName,
+            "email": email
+        ]
+        
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: userData)
+            
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            if let httpResponse = response as? HTTPURLResponse {
+                if httpResponse.statusCode == 200 {
+                    print("✅ Supabaseユーザー登録成功")
+                } else if httpResponse.statusCode == 400 {
+                    print("ℹ️ ユーザーは既に登録済み")
+                } else {
+                    print("❌ Supabaseユーザー登録エラー: \(httpResponse.statusCode)")
+                }
+            } else {
+                print("❌ 無効なレスポンス")
+            }
+        } catch {
+            print("❌ Supabaseユーザー登録通信エラー: \(error.localizedDescription)")
         }
     }
     
@@ -144,7 +231,6 @@ class GoogleOAuthService: ObservableObject {
     private func clearAuthState() {
         isLoggedIn = false
         accessToken = nil
-        idToken = nil
         errorMessage = nil
         userEmail = nil
         userName = nil

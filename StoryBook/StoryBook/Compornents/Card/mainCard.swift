@@ -1,32 +1,22 @@
-//
-//  mainCard.swift
-//  StoryBook
-//
-//  Created by ayu on 2025/10/13.
-//
-
 import SwiftUI
 
 // MARK: - カードサイズ定義
 
 /// カードの横幅サイズ
 enum CardWidth {
-    case small
-    case medium
-    case large
-    case full
+    case screen90  // 画面幅の90%
+    case screen95  // 画面幅の95%
+    case screen100 // 画面幅の100%
     
     /// サイズに応じた最大幅
     var maxWidth: CGFloat {
         switch self {
-        case .small:
-            return 320
-        case .medium:
-            return 480
-        case .large:
-            return 640
-        case .full:
-            return .infinity
+        case .screen90:
+            return UIScreen.main.bounds.width * 0.9
+        case .screen95:
+            return UIScreen.main.bounds.width * 0.95
+        case .screen100:
+            return UIScreen.main.bounds.width * 1.0
         }
     }
 }
@@ -77,7 +67,7 @@ struct mainCard<Content: View>: View {
     init(
         offsetY: CGFloat = 0,
         labelColor: LabelColor = .white,
-        width: CardWidth = .medium,
+        width: CardWidth = .screen95,
         height: CGFloat? = nil,
         maxWidth: CGFloat? = nil,
         @ViewBuilder content: @escaping () -> Content
@@ -95,7 +85,7 @@ struct mainCard<Content: View>: View {
     var body: some View {
         ZStack {
             // ガラス風の透明効果（Reactの元の値に合わせて修正）
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: 40)
                 .fill(
                     // bg-gradient-to-br from-white/15 via-white/5 to-white/10
                     LinearGradient(
@@ -134,36 +124,33 @@ struct mainCard<Content: View>: View {
                 .overlay(
                     // 白い枠線（border border-white/30）
                     // より光らせるために不透明度を上げてグロー効果を追加
-                    RoundedRectangle(cornerRadius: 16)
+                    RoundedRectangle(cornerRadius: 40)
                         .stroke(Color.white.opacity(0.6), lineWidth: 1.5)
                         .shadow(color: Color.white.opacity(0.5), radius: 3, x: 0, y: 0)
                         .shadow(color: Color.white.opacity(0.3), radius: 6, x: 0, y: 0)
                 )
             
             // ガラス風のコンテンツエリア
-            // relative z-10 h-full flex flex-col items-center justify-start
             VStack {
                 content()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .multilineTextAlignment(.center)  // text-center
             // パディング
-            .padding(.top, 32)      // pt-8
+            .padding(.top, 16)      // pt-8
             .padding(.horizontal, 16)  // px-4
             .padding(.bottom, 16)   // pb-4
-            // フォントサイズと文字色
-            .font(.system(size: 18, weight: .medium))  // text-lg font-medium
+            // テキストカラー（フォントは個別のコンポーネントで設定）
             .foregroundColor(labelColor.color)
             // ボタン等が発光しないようにシャドウは付けない
         }
         // 動的なレスポンシブ最大幅
         .frame(
-            height: height ?? 400  // h-[19rem] = 304px
+            height: height ?? 440  // h-[19rem] = 304px
         )
         .frame(maxWidth: maxWidth ?? widthSize.maxWidth)  // 最大幅の制限
-        .clipShape(RoundedRectangle(cornerRadius: 16))  // overflow-hidden, rounded-2xl
+        .clipShape(RoundedRectangle(cornerRadius: 40))  // overflow-hidden, rounded-2xl
         // 強い輝き効果（複数のシャドウ）
-        // shadow-[0_8px_40px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.2),0_0_30px_rgba(255,255,255,0.3),0_0_60px_rgba(102,126,234,0.4),0_0_90px_rgba(255,255,255,0.2)]
         .shadow(color: Color.black.opacity(0.2), radius: 20, x: 0, y: 8)
         .shadow(color: Color.white.opacity(0.3), radius: 15, x: 0, y: 0)
         .shadow(color: Color(red: 102/255, green: 126/255, blue: 234/255).opacity(0.4), radius: 30, x: 0, y: 0)
@@ -177,26 +164,23 @@ struct mainCard<Content: View>: View {
 // MARK: - Preview
 
 #Preview {
-    Background {
-        // キャラクターを背景として配置
-        BigCharacter()
-        ZStack {
-            
-            
-            
-            // 基本的なガラス風カード
-            mainCard(width: .medium) {
-                VStack(spacing: 16) {
-                                    
-                    Text("えほんのたね")
-                        .font(.custom("YuseiMagic-Regular", size: 32))
-                    
-                    Text("ガラス風のカードコンポーネント")
-                        .font(.system(size: 16))
-                        .multilineTextAlignment(.center)
-                }
+    ZStack(alignment: .top) {
+        // 背景
+        Background {
+            BigCharacter()
+        }
+        
+        // ヘッダー
+        Header()
+        
+        // メインカード（画面下部に配置）
+        VStack {
+            Spacer()
+            mainCard(width: .screen95) {
+                
             }
-            .padding()
+            .padding(.horizontal, 16) // パディングを減らしてカードを広く表示
+            .padding(.bottom, -10) // 画面下部からの余白
         }
     }
 }

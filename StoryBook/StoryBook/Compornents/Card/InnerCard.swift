@@ -1,190 +1,137 @@
-//
-//  InnerCard.swift
-//  StoryBook
-//
-//  Created by ayu on 2025/10/15.
-//
-
 import SwiftUI
 
-// 質問表示用のインナーカードコンポーネント
-// React版のAPI(プロパティ)をSwiftUIに合わせて再現
-
+// シンプルなインナーカードコンポーネント
+// サイズ設定はコンポーネント内で管理し、View側ではシンプルに使用
 struct InnerCard: View {
-    // Reactのpropsに対応
-    let questions: [Question]
-    let currentIndex: Int
-    @Binding var currentAnswer: String
-    let onAnswerChange: (String) -> Void
-    let onPrev: () -> Void
-    let onNext: () -> Void
-    let isSubmitting: Bool
-    let isCompleted: Bool
-
+    let sections: [AnyView]
+    let cornerRadius: CGFloat
+    let backgroundColor: Color
+    let horizontalPadding: CGFloat
+    let verticalPadding: CGFloat
+    let showDividers: Bool
+    let dividerColor: Color
+    
+    // mainCardのサイズに基づく固定サイズ（90%）
+    private let widthRatio: CGFloat = 0.9
+    private let heightRatio: CGFloat = 0.9
+    
+    // シンプルなイニシャライザ（サイズパラメータを削除）
+    init(
+        cornerRadius: CGFloat = 16,
+        backgroundColor: Color = Color.white.opacity(0.5),
+        horizontalPadding: CGFloat = 16,
+        verticalPadding: CGFloat = 16,
+        showDividers: Bool = true,
+        dividerColor: Color = Color.gray.opacity(0.3),
+        sections: [AnyView]
+    ) {
+        self.sections = sections
+        self.cornerRadius = cornerRadius
+        self.backgroundColor = backgroundColor
+        self.horizontalPadding = horizontalPadding
+        self.verticalPadding = verticalPadding
+        self.showDividers = showDividers
+        self.dividerColor = dividerColor
+    }
+    
     var body: some View {
-        ZStack {
-            // 背景 (rgba(255,255,255,0.5)相当)
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white.opacity(0.5))
-
-            content
-                .padding(.horizontal, 16)
-                .padding(.vertical, 16)
-        }
-    }
-
-    @ViewBuilder
-    private var content: some View {
-        if questions.isEmpty {
-            // しつもんをよみこみちゅう...
-            Text("しつもんをよみこみちゅう...")
-                .font(.system(size: 22, weight: .regular))
-                .multilineTextAlignment(.center)
-        } else {
-            VStack(spacing: 24) {
-                Spacer(minLength: 0)
-
-                QuestionInputView(
-                    question: questions[safe: currentIndex] ?? questions.first!,
-                    value: $currentAnswer,
-                    onChange: { text in
-                        onAnswerChange(text)
-                    }
-                )
-
-                Spacer(minLength: 0)
-            }
-        }
-    }
-}
-
-// 質問入力ビュー (ReactのQuestionInputに対応)
-private struct QuestionInputView: View {
-    let question: Question
-    @Binding var value: String
-    let onChange: (String) -> Void
-
-    // テキストフィールドのフォーカス管理
-    @FocusState private var isFocused: Bool
-
-    var body: some View {
-        VStack(spacing: 24) {
-            // 質問テキスト（中央寄せ・大きめ）
-            Text(question.question)
-                .font(.custom("YuseiMagic-Regular", size: 32))
-                .foregroundColor(Color(red: 54/255, green: 45/255, blue: 48/255))
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 12)
-
-            inputField
-        }
-    }
-
-    @ViewBuilder
-    private var inputField: some View {
-        // 最低限の型分岐。未指定はテキスト入力として扱う
-        switch question.type.lowercased() {
-        case "select":
-            let currentLabel = (question.options ?? []).first(where: { $0.value == value })?.label
-            Menu {
-                let opts = question.options ?? []
-                ForEach(opts, id: \.value) { option in
-                    Button(option.label) {
-                        value = option.value
-                        onChange(option.value)
+        GeometryReader { geometry in
+            VStack(spacing: 0) {
+                ForEach(0..<sections.count, id: \.self) { index in
+                    sections[index]
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, horizontalPadding)
+                        .padding(.vertical, verticalPadding)
+                    
+                    // 区切り線（最後のセクション以外）
+                    if index < sections.count - 1 && showDividers {
+                        Rectangle()
+                            .fill(dividerColor)
+                            .frame(height: 1)
+                            .padding(.horizontal, horizontalPadding)
                     }
                 }
-            } label: {
-                HStack {
-                    Text(currentLabel ?? (question.placeholder ?? "えらんでください"))
-                        .font(.custom("YuseiMagic-Regular", size: 28))
-                        .foregroundColor(Color(red: 54/255, green: 45/255, blue: 48/255))
-                    Spacer(minLength: 12)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundColor(Color(red: 54/255, green: 45/255, blue: 48/255))
-                }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 18)
-                .background(Color.white.opacity(0.8))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12).stroke(Color(red: 54/255, green: 45/255, blue: 48/255), lineWidth: 2)
-                )
-                .cornerRadius(12)
             }
-
-        case "number":
-            TextField(question.placeholder ?? "こたえをいれてね", text: Binding(
-                get: { value },
-                set: { newValue in
-                    // 数字のみを許可 (簡易)
-                    let filtered = newValue.filter { $0.isNumber }
-                    value = filtered
-                    onChange(filtered)
-                }
-            ))
-            .textFieldStyle(RoundedBorderTextFieldStyle())
-            .focused($isFocused)
-
-        default:
-            TextField(question.placeholder ?? "こたえをいれてね", text: Binding(
-                get: { value },
-                set: { newValue in
-                    value = newValue
-                    onChange(newValue)
-                }
-            ))
-            .font(.custom("YuseiMagic-Regular", size: 22))
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .background(Color.white.opacity(0.8))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10).stroke(Color(red: 54/255, green: 45/255, blue: 48/255), lineWidth: 1.5)
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(backgroundColor)
             )
-            .cornerRadius(10)
-            .focused($isFocused)
+            // mainCardの90%サイズに設定
+            .frame(
+                width: geometry.size.width * widthRatio,
+                height: geometry.size.height * heightRatio
+            )
+            .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
         }
-    }
-}
-
-// 配列の安全アクセス
-private extension Array {
-    subscript(safe index: Index) -> Element? {
-        indices.contains(index) ? self[index] : nil
     }
 }
 
 struct InnerCard_Previews: PreviewProvider {
-    struct Wrapper: View {
-        @State private var answer: String = ""
-        var body: some View {
-            let sampleQuestions: [Question] = [
-                Question(
-                    field: "name",
-                    question: "なまえはなに？",
-                    type: "text",
-                    placeholder: "たろう",
-                    required: true,
-                    options: nil
-                )
-            ]
-
-            return InnerCard(
-                questions: sampleQuestions,
-                currentIndex: 0,
-                currentAnswer: $answer,
-                onAnswerChange: { _ in },
-                onPrev: {},
-                onNext: {},
-                isSubmitting: false,
-                isCompleted: false
-            )
-            .padding()
-        }
-    }
-
     static var previews: some View {
-        Wrapper()
-            .previewLayout(.sizeThatFits)
+        // ヘッダーを含む全体レイアウト
+        ZStack(alignment: .top) {
+            // 星空背景を適用
+            Background {
+                // キャラクターを背景として配置
+                BigCharacter()
+                
+                // メインコンテンツ
+                VStack {
+                    // ヘッダーの高さ分のスペースを確保
+                    Spacer()
+                        .frame(height: 120)
+                    
+                    // メインテキスト（カードコンポーネントと同じ光る効果）
+                    VStack(spacing: 8) {
+                        MainText(text: "どんな おはなしかな？")
+                        MainText(text: "おしえてね！")
+                    }
+                    .padding(.horizontal, 40)
+                    
+                    Spacer()
+                    
+                    // ガラス風カードを表示（プレビューに合わせて配置）
+                    mainCard(width: .screen95) {
+                        ZStack {
+                            // インナーカードをガラスカード内の中央に配置（サイズはコンポーネント内で管理）
+                            InnerCard(
+                                sections: [
+                                    AnyView(
+                                        // 上部領域：質問（中央配置）
+                                        VStack(spacing: 8) {
+                                            Text("質問")
+                                                .font(.custom("YuseiMagic-Regular", size: 18))
+                                                .foregroundColor(Color(red: 54/255, green: 45/255, blue: 48/255))
+                                            
+                                            Text("ここに質問内容が表示されます")
+                                                .font(.system(size: 18))
+                                                .foregroundColor(Color(red: 54/255, green: 45/255, blue: 48/255))
+                                                .multilineTextAlignment(.center)
+                                        }
+                                    ),
+                                    AnyView(
+                                        // 下部領域：入力エリア
+                                        VStack(spacing: 8) {
+                                            Text("入力")
+                                                .font(.custom("YuseiMagic-Regular", size: 18))
+                                                .foregroundColor(Color(red: 54/255, green: 45/255, blue: 48/255))
+                                            
+                                            Text("ここに入力エリアが表示されます")
+                                                .font(.system(size: 18))
+                                                .foregroundColor(Color(red: 54/255, green: 45/255, blue: 48/255))
+                                                .multilineTextAlignment(.center)
+                                        }
+                                    )
+                                ]
+                            )
+                        }
+                    }
+                    .padding()
+                    .padding(.bottom, 15) // プレビューに合わせて下から15ポイント上に移動
+                }
+                .previewLayout(.sizeThatFits)
+                .previewDisplayName("メインカード + InnerCard")
+            }
+        }
     }
 }

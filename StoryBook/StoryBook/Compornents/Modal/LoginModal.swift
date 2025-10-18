@@ -258,8 +258,12 @@ struct LoginModal: View {
             // Googleログインが成功した場合
             if isLoggedIn {
                 print("✅ Googleログイン成功 - モーダルを閉じます")
-                onLogin() // ログイン成功時のコールバックを実行
-                isPresented = false // モーダルを閉じる
+                
+                // Supabase登録処理が完了するまで少し待つ
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    onLogin() // ログイン成功時のコールバックを実行
+                    isPresented = false // モーダルを閉じる
+                }
             }
         }
     }

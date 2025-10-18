@@ -51,12 +51,7 @@ struct StoryBookView: View {
             // ヘッダー
             Header(
                 title: "えほんのたね",
-                logoName: "logo",
-                navItems: [
-                    HeaderNavItem(label: "ホーム", href: "/home", action: { print("ホームクリック") }),
-                    HeaderNavItem(label: "マイページ", href: "/mypage", action: { print("マイページクリック") }),
-                    HeaderNavItem(label: "ログアウト", action: { print("ログアウトクリック") })
-                ]
+                logoName: "logo"
             )
             // 非表示の遷移リンク
         }

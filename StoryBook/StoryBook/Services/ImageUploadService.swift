@@ -40,6 +40,25 @@ struct SignedUrlResponse: Codable {
     let signed_url: String
 }
 
+// 物語設定作成レスポンスモデル
+struct StorySettingCreateResponse: Codable {
+    let story_setting_id: Int
+    let generated_data: StorySettingGeneratedData?
+}
+
+// 物語設定生成データモデル
+struct StorySettingGeneratedData: Codable {
+    let title_suggestion: String?
+    let protagonist_name: String?
+    let protagonist_type: String?
+    let setting_place: String?
+    let tone: String?
+    let target_age: String?
+    let language: String?
+    let reading_level: String?
+    let style_guideline: String?
+}
+
 // 画像アップロードサービス
 class ImageUploadService: ObservableObject {
     // ObservableObjectの要件を満たすためのPublishedプロパティ
@@ -62,6 +81,12 @@ class ImageUploadService: ObservableObject {
         }
     }
     
+    // 現在のユーザーIDを取得
+    private func getCurrentUserId() -> String {
+        // Auth0のユーザーIDをそのまま使用（Supabaseでも同じIDを使用）
+        return UserDefaults.standard.string(forKey: "auth0_user_id") ?? "0"
+    }
+    
     // ゲストログインを実行
     func guestLogin() async throws -> String {
         let url = URL(string: "\(baseURL)/auth/guest")!
@@ -82,6 +107,17 @@ class ImageUploadService: ObservableObject {
         let authResponse = try JSONDecoder().decode(AuthResponse.self, from: data)
         accessToken = authResponse.access_token
         return authResponse.access_token
+    }
+    
+    // 画像をアップロードして物語設定も作成する統合メソッド
+    func uploadImageAndCreateStorySetting(_ image: Any) async throws -> (uploadResponse: UploadImageResponse, storySettingId: Int, generatedData: String?) {
+        // 画像をアップロード
+        let uploadResponse = try await uploadImage(image)
+        
+        // 物語設定を作成
+        let storySettingResponse = try await createStorySettingFromImage(imageId: uploadResponse.id)
+        
+        return (uploadResponse, storySettingResponse.story_setting_id, storySettingResponse.generated_data_jsonString)
     }
     
     // 画像をアップロード
@@ -128,10 +164,11 @@ class ImageUploadService: ObservableObject {
         let boundary = UUID().uuidString
         var body = Data()
         
-        // user_id フィールド（ゲストユーザーの場合は0）
+        // user_id フィールド（Auth0のユーザーIDを取得）
+        let userId = getCurrentUserId()
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"user_id\"\r\n\r\n".data(using: .utf8)!)
-        body.append("0\r\n".data(using: .utf8)!)
+        body.append("\(userId)\r\n".data(using: .utf8)!)
         
         // 画像ファイルフィールド
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
@@ -230,6 +267,31 @@ class ImageUploadService: ObservableObject {
         
         let signedUrlResponse = try JSONDecoder().decode(SignedUrlResponse.self, from: data)
         return signedUrlResponse.signed_url
+    }
+    
+    // 画像IDから物語設定を作成する
+    private func createStorySettingFromImage(imageId: Int) async throws -> (story_setting_id: Int, generated_data_jsonString: String?) {
+        let url = URL(string: "\(baseURL)/story/story_settings/\(imageId)")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        if let token = accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? ""
+            throw NSError(domain: "StorySettingCreate", code: (response as? HTTPURLResponse)?.statusCode ?? -1, userInfo: [NSLocalizedDescriptionKey: body])
+        }
+        
+        let decoded = try JSONDecoder().decode(StorySettingCreateResponse.self, from: data)
+        var jsonString: String? = nil
+        if let gen = decoded.generated_data, let encoded = try? JSONEncoder().encode(gen) {
+            jsonString = String(data: encoded, encoding: .utf8)
+        }
+        return (decoded.story_setting_id, jsonString)
     }
 }
 

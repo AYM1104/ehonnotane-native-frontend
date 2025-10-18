@@ -4,10 +4,16 @@ import SwiftUI
 import Auth0
 #endif
 
+enum AppView {
+    case login
+    case uploadImage
+    case questions
+}
+
 struct LoginView: View {
     // 認証サービス
     // @StateObject private var authService = AuthService()
-    @State private var navigateToUploadImage = false
+    @State private var currentView: AppView = .login
     
     // 一時的な認証状態（後でAuthServiceに移行）
     @State private var isLoggedIn = false
@@ -24,16 +30,35 @@ struct LoginView: View {
     
     var body: some View {
         NavigationStack {
-            Background {
-                mainContent
+            switch currentView {
+            case .login:
+                loginContent
+            case .uploadImage:
+                UploadImageView(onNavigateToQuestions: {
+                    print("🔄 UploadImageViewから遷移要求: QuestionViewへ")
+                    currentView = .questions
+                })
+            case .questions:
+                QuestionView(onNavigateToThemeSelect: {
+                    print("テーマ選択画面への遷移")
+                })
             }
-            #if os(iOS)
-            .navigationBarHidden(true)
-            #endif
+        }
+        #if os(iOS)
+        .navigationBarHidden(true)
+        #endif
+        .onChange(of: currentView) { _, newView in
+            print("🔄 currentView変更: \(newView)")
         }
     }
     
     // MARK: - View Components
+    
+    private var loginContent: some View {
+        Background {
+            mainContent
+        }
+    }
     
     private var mainContent: some View {
         VStack(spacing: 24) {
@@ -46,15 +71,10 @@ struct LoginView: View {
             Spacer()
         }
         .padding()
-        .background(
-            // 非表示のNavigationLink
-            NavigationLink(destination: UploadImageView(), isActive: $navigateToUploadImage) {
-                EmptyView()
-            }
-        )
-        .onChange(of: isLoggedIn) { loggedIn in
+        .onChange(of: isLoggedIn) { _, loggedIn in
             if loggedIn {
-                navigateToUploadImage = true
+                print("🔄 ログイン成功: UploadImageViewへ遷移")
+                currentView = .uploadImage
             }
         }
     }
@@ -75,7 +95,7 @@ struct LoginView: View {
     }
     
     private var loginFormSection: some View {
-        mainCard(width: .medium) {
+        mainCard(width: .screen95) {
             VStack(spacing: 20) {
                 loginTitle
                 LoginForm(
@@ -218,6 +238,8 @@ struct LoginView: View {
                         errorMessage = nil
                         print("✅ Auth0ログイン成功")
                         
+                        // ユーザー情報はGoogleOAuthServiceで処理される
+                        
                     case .failure(let error):
                         isLoggedIn = false
                         accessToken = nil
@@ -232,12 +254,21 @@ struct LoginView: View {
         #endif
     }
     
+    // extractUserInfoFromIdTokenメソッドはGoogleOAuthServiceに移動済み
+    
+    // registerUserToSupabaseメソッドはGoogleOAuthServiceに移動済み
+    
     private func loginWithGoogle() {
         #if canImport(Auth0)
         isLoading = true
         errorMessage = nil
         
         print("🔍 Googleログイン開始")
+        
+        // 既存のセッションをクリアしてGoogleアカウント選択画面を表示
+        Auth0.webAuth().clearSession { _ in
+            print("🧹 Auth0セッションクリア完了")
+        }
         
         // Auth0のUniversal LoginでGoogleプロバイダーを指定
         Auth0
@@ -258,6 +289,8 @@ struct LoginView: View {
                         print("✅ Googleログイン成功")
                         print("Access Token: \(credentials.accessToken)")
                         print("ID Token: \(credentials.idToken)")
+                        
+                        // ユーザー情報はGoogleOAuthServiceで処理される
                         
                     case .failure(let error):
                         isLoggedIn = false

@@ -1,10 +1,3 @@
-//
-//  MainText.swift
-//  StoryBook
-//
-//  Created by ayu on 2025/10/15.
-//
-
 import SwiftUI
 
 /// メインテキストコンポーネント - 輝く効果付きのテキスト表示
@@ -54,19 +47,28 @@ private extension View {
 }
 
 #Preview {
-    ZStack {
-        Color.blue
-            .ignoresSafeArea()
+    ZStack(alignment: .top) {
+        // 背景
+        Background {
+            BigCharacter()
+        }
         
-        VStack(spacing: 30) {
-            // 輝く効果あり（デフォルト）
-            MainText(text: "どんな えほん にしようかな？")
-            
-            // 輝く効果なし
-            MainText(text: "輝きなしのテキスト", glowEffect: false)
-            
-            // カスタムカラーとサイズ
-            MainText(text: "カスタムスタイル", fontSize: 36, color: .yellow)
+        // ヘッダー
+        Header()
+        
+        // メインカード（画面下部に配置）
+        VStack {
+            // ヘッダーの高さ分のスペースを確保
+            Spacer()
+                .frame(height: 80)
+            MainText(text: "どんな え でえほんを")
+            MainText(text: "つくろうかな？")
+            Spacer()
+            mainCard(width: .screen95) {
+                
+            }
+            .padding(.horizontal, 16) // パディングを減らしてカードを広く表示
+            .padding(.bottom, -10) // 画面下部からの余白
         }
     }
 }

@@ -46,6 +46,7 @@ class AuthManager: ObservableObject {
     @Published var userName: String?
     @Published var userPicture: String?
     @Published var userIdentifier: String?
+    @Published var auth0UserId: String?  // Auth0のユーザーID（sub）
 }
 
 /// 認証プロバイダーを管理するメインサービス
@@ -181,8 +182,7 @@ class AuthService: ObservableObject {
             authManager.currentProvider = .email
             authManager.errorMessage = nil
             
-            // IDトークンからユーザー情報を取得
-            extractUserInfoFromIdToken(credentials.idToken)
+            // ユーザー情報はGoogleOAuthServiceで処理される
             
             print("✅ Auth0ログイン成功")
             
@@ -193,14 +193,44 @@ class AuthService: ObservableObject {
     }
     #endif
     
-    /// IDトークンからユーザー情報を抽出
-    private func extractUserInfoFromIdToken(_ idToken: String) {
-        if let data = Data(base64Encoded: idToken.components(separatedBy: ".")[1]),
-           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+    // extractUserInfoFromIdTokenメソッドはGoogleOAuthServiceに移動済み
+    
+    /// Supabaseにユーザー情報を登録
+    private func registerUserToSupabase(auth0UserId: String, userName: String, email: String) async {
+        let baseURL = ProcessInfo.processInfo.environment["NEXT_PUBLIC_API_URL"] ?? "http://localhost:8000"
+        
+        guard let url = URL(string: "\(baseURL)/users/") else {
+            print("❌ Supabaseユーザー登録URLエラー")
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        // リクエストボディを作成（Auth0のユーザーIDを主キーとして使用）
+        let userData: [String: Any] = [
+            "id": auth0UserId,  // Auth0のユーザーIDをSupabaseの主キーとして使用
+            "user_name": userName,
+            "email": email
+        ]
+        
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: userData)
             
-            authManager.userEmail = json["email"] as? String
-            authManager.userName = json["name"] as? String
-            authManager.userPicture = json["picture"] as? String
+            let (_, response) = try await URLSession.shared.data(for: request)
+            
+            if let httpResponse = response as? HTTPURLResponse {
+                if httpResponse.statusCode == 200 {
+                    print("✅ Supabaseユーザー登録成功: \(auth0UserId)")
+                } else if httpResponse.statusCode == 400 {
+                    print("ℹ️ ユーザーは既に登録済み: \(auth0UserId)")
+                } else {
+                    print("❌ Supabaseユーザー登録エラー: \(httpResponse.statusCode)")
+                }
+            }
+        } catch {
+            print("❌ Supabaseユーザー登録通信エラー: \(error.localizedDescription)")
         }
     }
     
@@ -213,7 +243,11 @@ class AuthService: ObservableObject {
         authManager.userName = nil
         authManager.userPicture = nil
         authManager.userIdentifier = nil
+        authManager.auth0UserId = nil  // Auth0ユーザーIDもクリア
         authManager.isLoading = false
+        
+        // UserDefaultsからも削除
+        UserDefaults.standard.removeObject(forKey: "auth0_user_id")
     }
     
     // MARK: - Combine
@@ -242,5 +276,10 @@ extension AuthManager {
     /// 現在のプロバイダーのアイコン名
     var currentProviderIcon: String {
         return currentProvider?.iconName ?? "person.circle.fill"
+    }
+    
+    /// 現在のAuth0ユーザーIDを取得
+    var currentAuth0UserId: String? {
+        return auth0UserId ?? UserDefaults.standard.string(forKey: "auth0_user_id")
     }
 }
