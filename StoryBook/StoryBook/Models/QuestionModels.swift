@@ -1,7 +1,8 @@
 import Foundation
 
 // 質問モデル群（アプリ全体で共通利用）
-struct QuestionOption: Codable {
+struct QuestionOption: Codable, Identifiable {
+    var id: String { value }
     let value: String
     let label: String
 }

@@ -7,7 +7,7 @@ import UIKit
 
 struct UploadImageView: View {
     // MARK: - Properties
-    let onNavigateToQuestions: () -> Void
+    let onNavigateToQuestions: (Int) -> Void
     
     // PhotosPickerの選択状態を管理するState
     @State private var selectedItem: PhotosPickerItem?
@@ -120,8 +120,8 @@ struct UploadImageView: View {
                 // メインスレッドでUIを更新
                 await MainActor.run {
                     isUploading = false
-                    print("🔄 アップロード完了: onNavigateToQuestions()を呼び出し")
-                    onNavigateToQuestions()
+                    print("🔄 アップロード完了: onNavigateToQuestions(storySettingId)を呼び出し")
+                    onNavigateToQuestions(result.storySettingId)
                 }
                 
             } catch {
@@ -140,7 +140,7 @@ struct UploadImageView: View {
 }
 
 #Preview {
-    UploadImageView(onNavigateToQuestions: {
-        print("プレビュー: QuestionViewへの遷移")
+    UploadImageView(onNavigateToQuestions: { storySettingId in
+        print("プレビュー: QuestionCardViewへの遷移 (storySettingId=\(storySettingId))")
     })
 }

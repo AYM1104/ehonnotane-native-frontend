@@ -113,6 +113,28 @@ struct UploadedImageInfo: Codable {
     }
 }
 
+// テーマプロットレスポンス（APIから取得）
+struct ThemePlotResponse: Codable {
+    let storyPlotId: Int
+    let title: String
+    let description: String?
+    let selectedTheme: String
+    let createdAt: String
+    
+    enum CodingKeys: String, CodingKey {
+        case title, description
+        case storyPlotId = "story_plot_id"
+        case selectedTheme = "selected_theme"
+        case createdAt = "created_at"
+    }
+}
+
+// テーマプロット一覧レスポンス
+struct ThemePlotsListResponse: Codable {
+    let count: Int
+    let items: [ThemePlotResponse]
+}
+
 // 物語ページのデータモデル
 struct StoryPage {
     let id: UUID
@@ -198,7 +220,6 @@ struct Story {
                 pages.append(page)
             }
         }
-        
         self.pages = pages
         let formatter = ISO8601DateFormatter()
         self.createdAt = formatter.date(from: storybookResponse.createdAt) ?? Date()
@@ -210,5 +231,31 @@ struct Story {
             self.theme = nil
         }
         self.imageGenerationStatus = storybookResponse.imageGenerationStatus
+    }
+}
+
+// テーマページのデータモデル（ThemeSelectView用）
+struct ThemePage: Identifiable {
+    let id: String
+    let title: String
+    let content: String
+    let storyPlotId: Int
+    let selectedTheme: String
+    
+    init(id: String = UUID().uuidString, title: String, content: String, storyPlotId: Int, selectedTheme: String) {
+        self.id = id
+        self.title = title
+        self.content = content
+        self.storyPlotId = storyPlotId
+        self.selectedTheme = selectedTheme
+    }
+    
+    // ThemePlotResponseからThemePageに変換
+    init(from themePlot: ThemePlotResponse) {
+        self.id = "\(themePlot.storyPlotId)"
+        self.title = themePlot.title
+        self.content = themePlot.description ?? "テーマの説明"
+        self.storyPlotId = themePlot.storyPlotId
+        self.selectedTheme = themePlot.selectedTheme
     }
 }

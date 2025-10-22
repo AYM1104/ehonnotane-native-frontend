@@ -254,7 +254,7 @@ struct LoginModal: View {
             isFormValid = false
             showContent = false
         }
-        .onChange(of: googleOAuthService.isLoggedIn) { isLoggedIn in
+        .onChange(of: googleOAuthService.isLoggedIn) { _, isLoggedIn in
             // Googleログインが成功した場合
             if isLoggedIn {
                 print("✅ Googleログイン成功 - モーダルを閉じます")

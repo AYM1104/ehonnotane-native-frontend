@@ -30,7 +30,7 @@ struct QuestionView: View {
                             // インナーカードをガラスカード内の中央に配置（サイズはコンポーネント内で管理）
                             InnerCard(
                                 sections: [
-                                    AnyView(
+                                    .init {
                                         // 上部領域：質問（中央配置）
                                         VStack(spacing: 8) {
                                             Text("質問")
@@ -42,8 +42,8 @@ struct QuestionView: View {
                                                 .foregroundColor(Color(red: 54/255, green: 45/255, blue: 48/255))
                                                 .multilineTextAlignment(.center)
                                         }
-                                    ),
-                                    AnyView(
+                                    },
+                                    .init {
                                         // 下部領域：入力エリア
                                         VStack(spacing: 8) {
                                             Text("入力")
@@ -55,7 +55,7 @@ struct QuestionView: View {
                                                 .foregroundColor(Color(red: 54/255, green: 45/255, blue: 48/255))
                                                 .multilineTextAlignment(.center)
                                         }
-                                    )
+                                    }
                                 ]
                             )
                         }

@@ -4,10 +4,10 @@ import SwiftUI
 import Auth0
 #endif
 
-enum AppView {
+enum AppView: Equatable {
     case login
     case uploadImage
-    case questions
+    case questions(Int)
 }
 
 struct LoginView: View {
@@ -34,14 +34,14 @@ struct LoginView: View {
             case .login:
                 loginContent
             case .uploadImage:
-                UploadImageView(onNavigateToQuestions: {
+                UploadImageView(onNavigateToQuestions: { storySettingId in
                     print("🔄 UploadImageViewから遷移要求: QuestionViewへ")
-                    currentView = .questions
+                    currentView = .questions(storySettingId)
                 })
-            case .questions:
-                QuestionView(onNavigateToThemeSelect: {
+            case .questions(let storySettingId):
+                QuestionCardView(onNavigateToThemeSelect: {
                     print("テーマ選択画面への遷移")
-                })
+                }, storySettingId: storySettingId)
             }
         }
         #if os(iOS)

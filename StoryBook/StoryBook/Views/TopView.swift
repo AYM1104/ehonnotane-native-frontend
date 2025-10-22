@@ -9,6 +9,8 @@ struct TopView: View {
     @State private var showUploadImageView = false
     // QuestionViewの表示状態を管理
     @State private var showQuestionView = false
+    // 物語設定IDを保持
+    @State private var storySettingId: Int?
     // ThemeSelectViewの表示状態を管理
     @State private var showThemeSelectView = false
     
@@ -16,30 +18,31 @@ struct TopView: View {
         ZStack {
             if showThemeSelectView {
                 // ThemeSelectViewを表示
-                ThemaSelectView()
+                ThemeSelectView()
                     .transition(.asymmetric(
                         insertion: .move(edge: .trailing).combined(with: .opacity),
                         removal: .move(edge: .leading).combined(with: .opacity)
                     ))
-            } else if showQuestionView {
-                // QuestionViewを表示
-                QuestionView(onNavigateToThemeSelect: {
-                    // QuestionViewからThemeSelectViewへの遷移
+            } else if showQuestionView, let storySettingId {
+                // QuestionCardViewを表示
+                QuestionCardView(onNavigateToThemeSelect: {
+                    // QuestionCardViewからThemeSelectViewへの遷移
                     withAnimation(.easeInOut(duration: 0.5)) {
                         showQuestionView = false
                         showThemeSelectView = true
                     }
-                })
+                }, storySettingId: storySettingId)
                 .transition(.asymmetric(
                     insertion: .move(edge: .trailing).combined(with: .opacity),
                     removal: .move(edge: .leading).combined(with: .opacity)
                 ))
             } else if showUploadImageView {
                 // UploadImageViewを表示
-                UploadImageView(onNavigateToQuestions: {
+                UploadImageView(onNavigateToQuestions: { newStorySettingId in
                     // UploadImageViewからQuestionViewへの遷移
                     withAnimation(.easeInOut(duration: 0.5)) {
                         showUploadImageView = false
+                        storySettingId = newStorySettingId
                         showQuestionView = true
                     }
                 })

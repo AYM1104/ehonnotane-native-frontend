@@ -105,7 +105,7 @@ struct ThemeCard: View {
 }
 
 // テーマモデル（必要に応じて既存のモデルを使用）
-struct Theme {
+struct Theme: Identifiable {
     let id: String
     let name: String
     let description: String?
