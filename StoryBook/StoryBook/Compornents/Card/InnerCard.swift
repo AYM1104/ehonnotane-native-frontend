@@ -7,17 +7,20 @@ struct InnerCard: View {
         let fixedHeight: CGFloat?
         let fillsRemainingSpace: Bool
         let alignment: Alignment
+        let showDivider: Bool  // このセクションの後に区切り線を表示するかどうか
         private let contentView: AnyView
         
         init(
             fixedHeight: CGFloat? = nil,
             fillsRemainingSpace: Bool = true,
             alignment: Alignment = .center,
+            showDivider: Bool = true,  // デフォルトで区切り線を表示
             @ViewBuilder content: @escaping () -> some View
         ) {
             self.fixedHeight = fixedHeight
             self.fillsRemainingSpace = fillsRemainingSpace
             self.alignment = alignment
+            self.showDivider = showDivider
             self.contentView = AnyView(content())
         }
         
@@ -76,8 +79,8 @@ struct InnerCard: View {
                     .padding(.horizontal, 30)
                     .padding(.top, 16)
                 
-                // 区切り線（最後のセクション以外）
-                if index < sections.count - 1 && showDividers {
+                // 区切り線（最後のセクション以外、かつセクションで区切り線が有効な場合）
+                if index < sections.count - 1 && showDividers && sections[index].showDivider {
                     Rectangle()
                         .fill(dividerColor)
                         .frame(height: 1)
@@ -122,7 +125,7 @@ struct InnerCard_Previews: PreviewProvider {
                         
                         InnerCard(
                             sections: [
-                                .init {
+                                .init(showDivider: false) {
                                     // 上部領域：質問（中央配置）
                                     VStack(spacing: 8) {
                                         SubText(text: "質問", fontSize: 18)

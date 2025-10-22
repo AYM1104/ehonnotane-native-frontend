@@ -98,6 +98,7 @@ struct ThemeSelectView: View {
                                     // インナーカードを表示
                                     InnerCard(
                                         sections: [
+                                            // おはなしのタイトル
                                             .init(
                                                 fixedHeight: 100,
                                                 fillsRemainingSpace: false,
@@ -108,10 +109,31 @@ struct ThemeSelectView: View {
                                                     SubText(text: page.title)
                                                 }
                                             },
+                                            // おはなしの概要
                                             .init(
-                                                alignment: .top  // ← 中央揃えではなく上揃えに変更
+                                                alignment: .top,  // ← 中央揃えではなく上揃えに変更
+                                                showDivider: false // 区切り線を表示しない
                                             ) {
-                                               SubText(text: page.content)
+                                               ScrollView(showsIndicators: true) {
+                                                    SubText(text: page.content)
+                                                        .padding(.horizontal, 10) // 左右の余白を追加
+                                               }
+                                               .frame(maxHeight: .infinity) // 利用可能な高さまで拡張
+                                               .padding(.bottom, -10) // 下部の余白を追加
+                                            },
+                                            // 決定ボタン
+                                            .init(
+                                                fixedHeight: 80,
+                                                fillsRemainingSpace: false,
+                                                alignment: .center
+                                            ) {
+                                                PrimaryButton(
+                                                    title: "これにけってい",
+                                                    action: {
+                                                        // テーマ選択時のアクション
+                                                        print("テーマが選択されました: \(page.title)")
+                                                    }
+                                                )
                                             }
                                         ]
                                     )
