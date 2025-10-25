@@ -10,6 +10,10 @@ import SwiftUI
 struct ContentView: View {
     // ボタン表示状態を管理
     @State private var showButton = false
+    @State private var isLoginModalPresented = false
+    @State private var isKeyboardVisible = false
+    @State private var keyboardHeight: CGFloat = 0
+    @State private var focusedField = 0
     
     var body: some View {
         NavigationStack {
@@ -26,7 +30,16 @@ struct ContentView: View {
                     
                     // ボタン（タイトル表示後に表示）
                     VStack(spacing: 15) {
-                        NavigationLink(destination: LoginView()) {
+                        NavigationLink(destination: LoginModal(
+                            isPresented: $isLoginModalPresented,
+                            isKeyboardVisible: $isKeyboardVisible,
+                            keyboardHeight: keyboardHeight,
+                            focusedField: $focusedField,
+                            onLogin: {
+                                // ログイン成功時の処理
+                                print("ログイン成功")
+                            }
+                        )) {
                             Text("えほんをつくる")
                                 .font(.custom("YuseiMagic-Regular", size: 20))
                                 .foregroundColor(.white)

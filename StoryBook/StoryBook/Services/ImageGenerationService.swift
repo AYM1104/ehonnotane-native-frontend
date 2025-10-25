@@ -84,24 +84,53 @@ class ImageGenerationService: ObservableObject {
     @Published var progress = ImageGenerationProgressState()
     @Published var errorMessage: String?
     
+    // MARK: - 認証トークン管理
+    private let authManager = AuthManager()
+    
     private init() {
         // 環境変数からAPIベースURLを取得、デフォルトはlocalhost
-        self.baseURL = ProcessInfo.processInfo.environment["NEXT_PUBLIC_API_URL"] ?? "http://localhost:8000"
+        self.baseURL = ProcessInfo.processInfo.environment["NEXT_PUBLIC_API_URL"] ?? "http://192.168.3.93:8000"
+    }
+    
+    // MARK: - 認証トークン管理メソッド（AuthManagerを使用）
+    
+    /// アクセストークンを設定
+    func setAccessToken(_ token: String?) {
+        // AuthManagerを使用するため、このメソッドは非推奨
+        print("⚠️ setAccessTokenは非推奨です。AuthManagerを使用してください")
+    }
+    
+    /// 現在のアクセストークンを取得
+    func getAccessToken() -> String? {
+        return authManager.getAccessToken()
+    }
+    
+    /// 認証状態を確認
+    func isAuthenticated() -> Bool {
+        return authManager.verifyAuthState()
     }
     
     // MARK: - 画像生成開始
-    func generateImages(for storySettingId: Int, themeTitle: String) async throws {
-        guard storySettingId > 0 else {
+    func generateImages(for storySettingId: Int, themeTitle: String, storyPlotId: Int) async throws {
+        guard storySettingId > 0 && storyPlotId > 0 else {
             throw ImageGenerationError.invalidStorySettingId
         }
+        
+        // 認証トークンが必須
+        guard let token = getAccessToken() else {
+            print("❌ 認証トークンが未設定です")
+            throw ImageGenerationError.serverError(401, "認証が必要です")
+        }
+        
+        print("✅ 認証済みユーザーで画像生成を実行")
         
         // 進捗状態をリセットして開始
         progress.start(total: 5)
         errorMessage = nil
         
         do {
-            // 実際のAPI呼び出し（現在はモック）
-            try await performImageGeneration(storySettingId: storySettingId, themeTitle: themeTitle)
+            // 実際のAPI呼び出し
+            try await performImageGeneration(storySettingId: storySettingId, themeTitle: themeTitle, storyPlotId: storyPlotId)
             
             progress.finish()
             
@@ -112,55 +141,63 @@ class ImageGenerationService: ObservableObject {
         }
     }
     
-    // MARK: - 実際の画像生成処理（モック実装）
-    private func performImageGeneration(storySettingId: Int, themeTitle: String) async throws {
-        // 実際のAPI実装に置き換える
-        // 現在は疑似的な生成進行をシミュレート
-        
-        for page in 1...5 {
-            // 生成開始
-            progress.setGenerating(
-                pageNumber: page,
-                message: "ページ \(page) の画像を生成中..."
-            )
-            
-            // 生成時間をシミュレート（実際のAPI呼び出しに置き換え）
-            try await Task.sleep(nanoseconds: 1_000_000_000) // 1秒
-            
-            // 生成完了
-            progress.setCompleted(pageNumber: page)
-        }
+    // MARK: - 実際の画像生成処理
+    private func performImageGeneration(storySettingId: Int, themeTitle: String, storyPlotId: Int) async throws {
+        // 実際のAPI呼び出しを実行
+        try await callImageGenerationAPI(storySettingId: storySettingId, themeTitle: themeTitle, storyPlotId: storyPlotId)
     }
     
-    // MARK: - 実際のAPI実装（将来の実装用）
-    private func callImageGenerationAPI(storySettingId: Int, themeTitle: String) async throws {
-        guard let url = URL(string: "\(baseURL)/story/generate_images") else {
+    // MARK: - 実際のAPI実装
+    private func callImageGenerationAPI(storySettingId: Int, themeTitle: String, storyPlotId: Int) async throws {
+        guard let url = URL(string: "\(baseURL)/images/generation/generate-storyplot-all-pages-image-to-image") else {
             throw ImageGenerationError.invalidStorySettingId
         }
         
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 180
+        
+        // 認証トークンを設定
+        if let token = getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
         
         let requestBody: [String: Any] = [
-            "story_setting_id": storySettingId,
-            "theme_title": themeTitle
+            "story_plot_id": storyPlotId,
+            "strength": 0.8,
+            "prefix": "storyplot_i2i_all"
         ]
         
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
             
+            print("🎨 画像生成API呼び出し開始: \(url)")
+            print("📝 リクエストボディ: \(requestBody)")
+            
+            // 生成開始メッセージ
+            progress.setGenerating(
+                pageNumber: 1,
+                message: "画像生成を開始しています..."
+            )
+            
             let (data, response) = try await URLSession.shared.data(for: request)
             
             if let httpResponse = response as? HTTPURLResponse {
+                print("📊 画像生成API レスポンス: \(httpResponse.statusCode)")
+                
                 switch httpResponse.statusCode {
                 case 200:
                     // 成功時の処理
+                    progress.setCompleted(pageNumber: 5)
+                    print("✅ 画像生成API呼び出し成功")
                     break
                 case 400...599:
                     let errorMessage = String(data: data, encoding: .utf8) ?? "不明なエラー"
+                    print("❌ 画像生成API エラー: \(httpResponse.statusCode) - \(errorMessage)")
                     throw ImageGenerationError.serverError(httpResponse.statusCode, errorMessage)
                 default:
+                    print("❌ 画像生成API 予期しないエラー: \(httpResponse.statusCode)")
                     throw ImageGenerationError.serverError(httpResponse.statusCode, "予期しないエラー")
                 }
             }
@@ -168,6 +205,7 @@ class ImageGenerationService: ObservableObject {
         } catch let error as ImageGenerationError {
             throw error
         } catch {
+            print("❌ 画像生成API ネットワークエラー: \(error)")
             throw ImageGenerationError.networkError(error)
         }
     }

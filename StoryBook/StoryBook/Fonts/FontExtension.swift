@@ -1,10 +1,3 @@
-//
-//  FontExtension.swift
-//  StoryBook
-//
-//  Created by ayu on 2025/10/12.
-//
-
 import SwiftUI
 import CoreText
 import CoreGraphics

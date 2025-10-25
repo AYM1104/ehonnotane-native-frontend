@@ -14,29 +14,39 @@ struct UploadImageView: View {
     @State private var selectedImage: UIImage?
     
     // 画像アップロード関連の状態
-    @StateObject private var imageUploadService = ImageUploadService()
+    @EnvironmentObject var authService: AuthService
+    @State private var imageUploadService: ImageUploadService?
     @State private var isUploading = false
     @State private var uploadError: String?
     @State private var showingError = false
+    
+    // MARK: - 初期化
+    init(onNavigateToQuestions: @escaping (Int) -> Void) {
+        self.onNavigateToQuestions = onNavigateToQuestions
+    }
     
     var body: some View {
         ZStack(alignment: .top) {
             // 背景
             Background {
-                BigCharacter()
+                BigCharacter()  // 背景に大きなキャラクターを表示
             }
             
             // ヘッダー
             Header()
             
-            // メインカード（画面下部に配置）
+            // メインコンテンツ
             VStack {
                 // ヘッダーの高さ分のスペースを確保
                 Spacer()
                     .frame(height: 80)
+                
+                // メインテキストを表示
                 MainText(text: "どんな え でえほんを")
                 MainText(text: "つくろうかな？")
                 Spacer()
+
+                // メインカードを表示
                 mainCard(width: .screen95) {
                     VStack(spacing: 16) {
                         Spacer()
@@ -54,7 +64,7 @@ struct UploadImageView: View {
                             PrimaryButton(
                                 title: isUploading ? "アップロード中..." : "これにけってい",
                                 action: {
-                                    handleImageUpload()
+                                    handleImageUpload() // 画像をアップロード
                                 }
                             )
                             .disabled(isUploading)
@@ -75,6 +85,12 @@ struct UploadImageView: View {
                 .padding(.bottom, -10) // 画面下部からの余白
             }
         }
+        .onAppear {
+            // ImageUploadServiceを初期化（AuthServiceのAuthManagerを使用）
+            imageUploadService = ImageUploadService(authManager: authService.authManager)
+            // 認証状態を確認
+            setupAuthentication()
+        }
         .onChange(of: selectedItem) { oldValue, newItem in
             Task {
                 if let data = try? await newItem?.loadTransferable(type: Data.self) {
@@ -93,23 +109,51 @@ struct UploadImageView: View {
         }
     }
     
-    // MARK: - Private Methods
+    // MARK: - 認証設定
     
+    /// 認証状態を確認してアクセストークンを設定
+    private func setupAuthentication() {
+        // AuthServiceの認証状態を確認
+        if authService.authManager.isLoggedIn && authService.authManager.verifyAuthState() {
+            print("✅ 認証済みユーザー: 認証状態を確認")
+        } else {
+            // 未ログインの場合、エラーを設定
+            uploadError = "ログインが必要です。ログイン画面に戻ってください。"
+            showingError = true
+            print("❌ 未ログイン: 認証が必要です")
+        }
+    }
+    
+    
+    // 「これにけってい」ボタンをタップすると以下が実行される
     #if canImport(UIKit)
     private func handleImageUpload() {
         print("🔄 handleImageUpload()が呼び出されました")
+        
+        // 認証状態を再確認
+        guard authService.authManager.isLoggedIn && authService.authManager.verifyAuthState() else {
+            uploadError = "ログインが必要です。ログイン画面に戻ってください。"
+            showingError = true
+            return
+        }
+        
         guard let image = selectedImage else { 
             print("❌ selectedImageがnilです")
             return 
         }
         
-        print("🔄 アップロード処理開始")
+        guard let imageUploadService = imageUploadService else {
+            print("❌ imageUploadServiceがnilです")
+            return
+        }
+        
+        print("========== 🔄 アップロード処理開始 ==========")
         isUploading = true
         uploadError = nil
         
         Task {
             do {
-                // 画像をアップロードして物語設定も作成
+                // 画像をアップロードして物語設定も作成（Services/ImageUploadService.swiftで実行）
                 let result = try await imageUploadService.uploadImageAndCreateStorySetting(image)
                 
                 print("✅ アップロード成功:")
@@ -139,8 +183,10 @@ struct UploadImageView: View {
     #endif
 }
 
+/*
 #Preview {
     UploadImageView(onNavigateToQuestions: { storySettingId in
         print("プレビュー: QuestionCardViewへの遷移 (storySettingId=\(storySettingId))")
     })
 }
+*/

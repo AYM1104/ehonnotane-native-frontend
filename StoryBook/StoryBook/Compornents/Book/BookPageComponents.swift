@@ -1,10 +1,3 @@
-//
-//  BookPageComponents.swift
-//  StoryBook
-//
-//  Created by ayu on 2025/10/16.
-//
-
 import SwiftUI
 
 // MARK: - ページ（紙面）に画像を表示するための共通ビュー
@@ -46,13 +39,13 @@ public struct BookImagePage: View {
                     .resizable()
                     .modifier(ScaledModifier(mode: fit))
                     .frame(width: w, height: imageHeight)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .clipShape(RoundedRectangle(cornerRadius: 0))
                     .shadow(color: .white.opacity(1.0), radius: 55, x: 0, y: 0)
                     .shadow(color: .white.opacity(0.75), radius: 30, x: 0, y: 0)
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.white.opacity(1.0), lineWidth: 40)
-                            .blur(radius: 30)
+                            .stroke(Color.white.opacity(0.3), lineWidth: 20)
+                            .blur(radius: 50)
                     )
             }
             .frame(maxWidth: .infinity)
@@ -60,9 +53,7 @@ public struct BookImagePage: View {
             // テキストエリア
             if let text = text {
                 VStack(spacing: 0) {
-                    Text(text)
-                        .font(.body)
-                        .multilineTextAlignment(.center)
+                    SubText(text: text, fontSize: 18)
                         .padding(.horizontal, 16)
                         .lineSpacing(4)
                 }
@@ -134,8 +125,8 @@ public struct BookRemoteImagePage: View {
                             .shadow(color: .white.opacity(0.75), radius: 30, x: 0, y: 0)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8)
-                                    .stroke(Color.white.opacity(1.0), lineWidth: 40)
-                                    .blur(radius: 30)
+                                    .stroke(Color.white.opacity(0.3), lineWidth: 20)
+                                    .blur(radius: 50)
                             )
                     case .failure(_):
                         ZStack {
@@ -163,12 +154,12 @@ public struct BookRemoteImagePage: View {
             
             // テキストエリア
             if let text = text {
-                VStack(spacing: 0) {
-                    Text(text)
-                        .font(.body)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 16)
-                        .lineSpacing(4)
+                ScrollView {
+                    VStack(spacing: 0) {
+                        SubText(text: text, fontSize: 20)
+                            .padding(.horizontal, 16)
+                            .lineSpacing(4)
+                    }
                 }
                 .frame(height: textAreaHeight)
                 .frame(maxWidth: .infinity, alignment: .top)

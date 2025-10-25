@@ -28,6 +28,12 @@ struct LoginForm: View {
     /// フォームの有効性変更時のコールバック
     let onFormValidChanged: (Bool) -> Void
     
+    /// キーボード表示状態変更時のコールバック
+    let onKeyboardVisibleChanged: (Bool) -> Void
+    
+    /// フォーカス状態変更時のコールバック（メールアドレス: 0, パスワード: 1）
+    let onFocusChanged: (Int) -> Void
+    
     // MARK: - 計算プロパティ
     
     /// メールアドレスの有効性チェック
@@ -64,6 +70,10 @@ struct LoginForm: View {
                         RoundedRectangle(cornerRadius: 12)
                             .stroke(inputFieldBorderColor, lineWidth: 1.5)
                     )
+                    .onTapGesture {
+                        onKeyboardVisibleChanged(true)
+                        onFocusChanged(0) // メールアドレスフィールド
+                    }
             }
             
             // パスワード入力フィールド
@@ -77,9 +87,17 @@ struct LoginForm: View {
                         if isPasswordVisible {
                             TextField("6文字以上", text: $password)
                                 .foregroundColor(.white)
+                                .onTapGesture {
+                                    onKeyboardVisibleChanged(true)
+                                    onFocusChanged(1) // パスワードフィールド
+                                }
                         } else {
                             SecureField("6文字以上", text: $password)
                                 .foregroundColor(.white)
+                                .onTapGesture {
+                                    onKeyboardVisibleChanged(true)
+                                    onFocusChanged(1) // パスワードフィールド
+                                }
                         }
                     }
                     
@@ -197,7 +215,9 @@ struct LoginForm: View {
                             password: .constant("password123"),
                             isPasswordVisible: .constant(false),
                             errorMessage: .constant(nil),
-                            onFormValidChanged: { _ in }
+                            onFormValidChanged: { _ in },
+                            onKeyboardVisibleChanged: { _ in },
+                            onFocusChanged: { _ in }
                         )
                         
                         // ログインボタン（プレビュー用）

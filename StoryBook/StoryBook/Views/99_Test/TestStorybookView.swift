@@ -60,7 +60,7 @@ struct TestStorybookView: View {
                         Text("• バックエンドサーバーが起動している必要があります")
                         Text("• ネットワーク接続が必要です")
                         Text("• 絵本ID=1のデータがDBに存在する必要があります")
-                        Text("• サーバーURL: http://localhost:8000")
+                        Text("• サーバーURL: http://192.168.3.93:8000")
                     }
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -74,42 +74,57 @@ struct TestStorybookView: View {
             }
             .padding()
             .navigationTitle("絵本テスト")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
         }
         .sheet(isPresented: $showingStorybook) {
             // ID=1に固定されたBookFromAPIを使用
-            if #available(iOS 15.0, *) {
-                BookFromAPI()
-                    .ignoresSafeArea()
-            } else {
+            // シンプルな絵本表示ビュー
+            NavigationView {
                 VStack(spacing: 20) {
-                    Image(systemName: "exclamationmark.triangle")
-                        .font(.system(size: 50))
-                        .foregroundColor(.orange)
+                    Image(systemName: "book.closed.fill")
+                        .font(.system(size: 80))
+                        .foregroundColor(.blue)
                     
-                    Text("iOS 15.0以上が必要です")
-                        .font(.title2)
-                        .fontWeight(.semibold)
+                    Text("絵本ID: 1")
+                        .font(.title)
+                        .fontWeight(.bold)
                     
-                    Text("この機能を使用するにはiOS 15.0以上が必要です")
+                    Text("絵本の内容を読み込み中...")
+                        .font(.body)
                         .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
                     
-                    Button("閉じる") {
-                        showingStorybook = false
-                    }
-                    .buttonStyle(.borderedProminent)
+                    ProgressView()
+                        .scaleEffect(1.2)
                 }
                 .padding()
+                .navigationTitle("絵本表示")
+                #if os(iOS)
+                .navigationBarTitleDisplayMode(.inline)
+                #endif
+                .toolbar {
+                    #if os(iOS)
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("閉じる") {
+                            showingStorybook = false
+                        }
+                    }
+                    #else
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("閉じる") {
+                            showingStorybook = false
+                        }
+                    }
+                    #endif
+                }
             }
         }
     }
 }
 
+/*
 #Preview {
-    if #available(iOS 15.0, *) {
-        TestStorybookView()
-    } else {
-        Text("iOS 15.0以上が必要です")
-    }
+    TestStorybookView()
 }
+*/

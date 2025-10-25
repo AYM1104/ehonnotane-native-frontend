@@ -41,7 +41,7 @@ enum QuestionAPIError: Error, LocalizedError {
 // MARK: - 質問データ取得サービス
 
 class QuestionService: ObservableObject {
-    private let baseURL = "http://localhost:8000"
+    private let baseURL = "http://192.168.3.93:8000"
     static let shared = QuestionService()
     
     @Published var isLoading = false

@@ -1,19 +1,12 @@
-//
-//  StorybookModels.swift
-//  StoryBook
-//
-//  Created by ayu on 2025/10/16.
-//
-
 import Foundation
 
 // MARK: - データモデル定義
 
 // バックエンドAPIから取得する絵本データモデル
-struct StorybookResponse: Codable {
+public struct StorybookResponse: Codable {
     let id: Int
     let storyPlotId: Int
-    let userId: Int
+    let userId: String  // Supabaseでは文字列型（Auth0のユーザーID）
     let title: String
     let description: String?
     let keywords: [String]?  // APIからは配列として返される可能性がある
@@ -55,12 +48,12 @@ struct StorybookResponse: Codable {
     }
     
     // カスタムデコーダーでエラーを回避
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         
         id = try container.decode(Int.self, forKey: .id)
         storyPlotId = try container.decode(Int.self, forKey: .storyPlotId)
-        userId = try container.decode(Int.self, forKey: .userId)
+        userId = try container.decode(String.self, forKey: .userId)  // 文字列型に変更
         title = try container.decode(String.self, forKey: .title)
         description = try container.decodeIfPresent(String.self, forKey: .description)
         
@@ -136,7 +129,7 @@ struct ThemePlotsListResponse: Codable {
 }
 
 // 物語ページのデータモデル
-struct StoryPage {
+public struct StoryPage {
     let id: UUID
     let pageNumber: Int
     let imageURL: String?
@@ -152,7 +145,7 @@ struct StoryPage {
     }
     
     // StorybookResponseからStoryPageに変換するイニシャライザ
-    init(from storybookResponse: StorybookResponse, pageNumber: Int) {
+    public init(from storybookResponse: StorybookResponse, pageNumber: Int) {
         self.id = UUID()
         self.pageNumber = pageNumber
         
@@ -182,7 +175,7 @@ struct StoryPage {
 }
 
 // 物語全体のデータモデル
-struct Story {
+public struct Story {
     let id: UUID
     let title: String
     let pages: [StoryPage]
@@ -200,7 +193,7 @@ struct Story {
     }
     
     // StorybookResponseからStoryに変換するイニシャライザ
-    init(from storybookResponse: StorybookResponse) {
+    public init(from storybookResponse: StorybookResponse) {
         self.id = UUID()
         self.title = storybookResponse.title
         

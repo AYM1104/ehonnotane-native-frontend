@@ -127,12 +127,13 @@ private struct QuestionTextInput: View {
                     }
                 }
             )
-            .onAppear {
-                // ビューが表示されたら即座にフォーカスを設定
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    isTextFieldFocused = true
-                }
-            }
+            // 自動フォーカスを無効化（キーボードの自動表示を防ぐ）
+            // .onAppear {
+            //     // ビューが表示されたら即座にフォーカスを設定
+            //     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            //         isTextFieldFocused = true
+            //     }
+            // }
             .onTapGesture {
                 // タップ時にフォーカスを確実に設定
                 isTextFieldFocused = true

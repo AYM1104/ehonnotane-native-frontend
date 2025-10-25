@@ -6,22 +6,8 @@ import Combine
 import UIKit
 #endif
 
-// 画像アップロード用のレスポンスモデル
-struct UploadImageResponse: Codable {
-    let id: Int
-    let file_name: String
-    let file_path: String
-    let content_type: String
-    let size_bytes: Int
-    let uploaded_at: String
-    let meta_data: String?
-    let public_url: String?
-}
-
-// ゲストログイン用のリクエストモデル
-struct GuestLoginRequest: Codable {
-    let device_uuid: String
-}
+// MARK: - Image Models Import
+// 画像関連モデルは Models/Images/ImageModels.swift に移動済み
 
 // 認証レスポンスモデル
 struct AuthResponse: Codable {
@@ -29,16 +15,11 @@ struct AuthResponse: Codable {
     let token_type: String
 }
 
-// ユーザー情報モデル
-struct UserInfo: Codable {
-    let user_id: String
-    let user_name: String?
-}
-
-// 認証済みURLレスポンスモデル
-struct SignedUrlResponse: Codable {
-    let signed_url: String
-}
+// ユーザー情報モデル（AuthModels.swiftで定義済み）
+// struct UserInfo: Codable {
+//     let user_id: String
+//     let user_name: String?
+// }
 
 // 物語設定作成レスポンスモデル
 struct StorySettingCreateResponse: Codable {
@@ -66,47 +47,38 @@ class ImageUploadService: ObservableObject {
     @Published var uploadProgress: Double = 0.0
     
     // バックエンドAPIのベースURL（環境変数優先、未設定時はローカル）
-    private let baseURL = ProcessInfo.processInfo.environment["NEXT_PUBLIC_API_URL"] ?? "http://localhost:8000"
+    private let baseURL = ProcessInfo.processInfo.environment["NEXT_PUBLIC_API_URL"] ?? "http://192.168.3.93:8000"
     
-    private var accessToken: String?
+    // MARK: - 認証管理
+    private let authManager: AuthManager
     
-    // デバイスUUIDを生成または取得
-    private var deviceUUID: String {
-        if let uuid = UserDefaults.standard.string(forKey: "device_uuid") {
-            return uuid
-        } else {
-            let newUUID = UUID().uuidString
-            UserDefaults.standard.set(newUUID, forKey: "device_uuid")
-            return newUUID
-        }
+    // MARK: - 初期化
+    init(authManager: AuthManager = AuthManager()) {
+        self.authManager = authManager
+    }
+    
+    // MARK: - 認証トークン管理（AuthManagerを使用）
+    
+    /// アクセストークンを設定
+    func setAccessToken(_ token: String?) {
+        // AuthManagerを使用するため、このメソッドは非推奨
+        print("⚠️ setAccessTokenは非推奨です。AuthManagerを使用してください")
+    }
+    
+    /// 現在のアクセストークンを取得
+    func getAccessToken() -> String? {
+        return authManager.getAccessToken()
+    }
+    
+    /// 認証状態を確認
+    func isAuthenticated() -> Bool {
+        return authManager.verifyAuthState()
     }
     
     // 現在のユーザーIDを取得
     private func getCurrentUserId() -> String {
-        // Auth0のユーザーIDをそのまま使用（Supabaseでも同じIDを使用）
-        return UserDefaults.standard.string(forKey: "auth0_user_id") ?? "0"
-    }
-    
-    // ゲストログインを実行
-    func guestLogin() async throws -> String {
-        let url = URL(string: "\(baseURL)/auth/guest")!
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        let loginRequest = GuestLoginRequest(device_uuid: deviceUUID)
-        request.httpBody = try JSONEncoder().encode(loginRequest)
-        
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw NetworkError.invalidResponse
-        }
-        
-        let authResponse = try JSONDecoder().decode(AuthResponse.self, from: data)
-        accessToken = authResponse.access_token
-        return authResponse.access_token
+        // AuthManagerからユーザーIDを取得
+        return authManager.getCurrentUserId() ?? "0"
     }
     
     // 画像をアップロードして物語設定も作成する統合メソッド
@@ -127,10 +99,13 @@ class ImageUploadService: ObservableObject {
             throw NetworkError.imageConversionFailed
         }
         
-        // まず認証トークンを取得
-        if accessToken == nil {
-            _ = try await guestLogin()
+        // 認証トークンが必須
+        guard let token = getAccessToken() else {
+            print("❌ 認証トークンが未設定です")
+            throw NetworkError.authenticationRequired
         }
+        
+        print("✅ 認証済みユーザーでアップロードを実行")
         
         // 画像形式を自動判定して最適なデータに変換
         let imageData: Data
@@ -183,12 +158,12 @@ class ImageUploadService: ObservableObject {
         body.append("--\(boundary)--\r\n".data(using: .utf8)!)
         
         // リクエストを作成
-        let url = URL(string: "\(baseURL)/images/upload")!
+        let url = URL(string: "\(baseURL)/api/images/upload")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         
-        if let token = accessToken {
+        if let token = getAccessToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         
@@ -202,21 +177,9 @@ class ImageUploadService: ObservableObject {
         }
         
         if httpResponse.statusCode == 401 {
-            // トークンが無効な場合、再ログインを試行
-            _ = try await guestLogin()
-            
-            // 再リクエスト
-            if let token = accessToken {
-                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            }
-            let (retryData, retryResponse) = try await URLSession.shared.data(for: request)
-            
-            guard let retryHttpResponse = retryResponse as? HTTPURLResponse,
-                  retryHttpResponse.statusCode == 200 else {
-                throw NetworkError.uploadFailed
-            }
-            
-            return try JSONDecoder().decode(UploadImageResponse.self, from: retryData)
+            // 認証エラーの場合、エラーを投げる（ゲストログインは削除）
+            print("❌ 認証エラー: トークンが無効です")
+            throw NetworkError.authenticationRequired
         } else if httpResponse.statusCode != 200 {
             throw NetworkError.uploadFailed
         }
@@ -254,7 +217,7 @@ class ImageUploadService: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         
-        if let token = accessToken {
+        if let token = getAccessToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         
@@ -276,7 +239,7 @@ class ImageUploadService: ObservableObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        if let token = accessToken {
+        if let token = getAccessToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         
@@ -300,7 +263,7 @@ enum NetworkError: Error, LocalizedError {
     case invalidResponse
     case imageConversionFailed
     case uploadFailed
-    case authenticationFailed
+    case authenticationRequired
     
     var errorDescription: String? {
         switch self {
@@ -310,8 +273,8 @@ enum NetworkError: Error, LocalizedError {
             return "画像の変換に失敗しました"
         case .uploadFailed:
             return "画像のアップロードに失敗しました"
-        case .authenticationFailed:
-            return "認証に失敗しました"
+        case .authenticationRequired:
+            return "ログインが必要です"
         }
     }
 }

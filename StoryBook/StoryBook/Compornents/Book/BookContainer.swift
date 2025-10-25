@@ -1,10 +1,3 @@
-//
-//  BookContainer.swift
-//  StoryBook
-//
-//  Created by ayu on 2025/10/16.
-//
-
 import SwiftUI
 #if canImport(UIKit)
 import UIKit
@@ -119,6 +112,7 @@ public struct Book<Content: View>: View {
     public let showProgressDots: Bool
     @State private var currentIndex: Int = 0
     @State private var dotPulse: Bool = false
+    public let onPageChange: ((Int) -> Void)?
 
     public init(
         pages: [Content],
@@ -128,7 +122,8 @@ public struct Book<Content: View>: View {
         aspectRatio: CGFloat = 10.0/16.0,
         cornerRadius: CGFloat = 16,
         paperColor: Color = Color(red: 252/255, green: 252/255, blue: 252/255),
-        showProgressDots: Bool = true
+        showProgressDots: Bool = true,
+        onPageChange: ((Int) -> Void)? = nil
     ) {
         self.pages = pages
         self.title = title
@@ -138,6 +133,7 @@ public struct Book<Content: View>: View {
         self.cornerRadius = cornerRadius
         self.paperColor = paperColor
         self.showProgressDots = showProgressDots
+        self.onPageChange = onPageChange
     }
 
     public var body: some View {
@@ -164,7 +160,7 @@ public struct Book<Content: View>: View {
                 // 本体サイズ（高さ優先）
                 let desiredH = availableHeight * heightRatio
                 let bookHeight = desiredH
-                let bookWidth = min(desiredH * aspectRatio, availableWidth * 0.98)
+                let bookWidth = geo.size.width
 
                 ZStack {
                     // 紙（角丸 + 影）
@@ -175,35 +171,13 @@ public struct Book<Content: View>: View {
                     // 中身（ページカール／ページング）
                     BookPageCurl(pages: pages, currentIndex: $currentIndex)
                         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+                        .onChange(of: currentIndex) { newIndex in
+                            onPageChange?(newIndex)
+                        }
                 }
                 .frame(width: bookWidth, height: bookHeight)
                 .frame(maxWidth: .infinity, alignment: .center)
 
-                if showProgressDots {
-                    let activeDotColor = Color(red: 16/255, green: 185/255, blue: 129/255) // PrimaryButton の基調色（emerald-500）
-                    HStack(spacing: 6) {
-                        ForEach(0..<pages.count, id: \.self) { i in
-                            let isActive = i == currentIndex
-                            Circle()
-                                .fill(isActive ? activeDotColor : activeDotColor.opacity(0.25))
-                                .frame(width: 8, height: 8)
-                                // TitleText ベース + さらに強い発光
-                                .shadow(color: Color.white.opacity(isActive ? 0.95 : 0.0), radius: isActive ? 18 : 0)
-                                .shadow(color: Color(red: 1, green: 0.78, blue: 0.59).opacity(isActive ? 0.75 : 0.0), radius: isActive ? 36 : 0)
-                                .shadow(color: Color(red: 1, green: 0.59, blue: 0.39).opacity(isActive ? 0.5 : 0.0), radius: isActive ? 50 : 0)
-                                // ボタン基調色で外縁のほのかなグロー
-                                .shadow(color: activeDotColor.opacity(isActive ? 0.7 : 0.0), radius: isActive ? 10 : 0)
-                                .scaleEffect(isActive ? (dotPulse ? 1.15 : 1.0) : 1.0)
-                        }
-                    }
-                    .padding(.top, 16)
-                    .padding(.bottom, 4)
-                    .onAppear {
-                        withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
-                            dotPulse = true
-                        }
-                    }
-                }
             }
         }
     }

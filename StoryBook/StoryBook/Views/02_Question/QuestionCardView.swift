@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 /// 質問カードビュー - 質問の表示と入力を行う
 struct QuestionCardView: View {
@@ -216,10 +217,10 @@ struct QuestionCardView: View {
                             VStack(spacing: 16) {
                                 PagerViewComponent(questionPages, spacing: 20, onPageChanged: { index in
                                     currentQuestionIndex = index
-                                    // ページ切り替え時にフォーカスをリセットしてから設定
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                        isTextFieldFocused = true
-                                    }
+                                    // ページ切り替え時の自動フォーカスを無効化（キーボードの自動表示を防ぐ）
+                                    // DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    //     isTextFieldFocused = true
+                                    // }
                                 }) { page in
                                     QuestionPageComponent(
                                         question: page.question,

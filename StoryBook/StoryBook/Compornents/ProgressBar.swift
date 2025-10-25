@@ -9,7 +9,7 @@ import SwiftUI
 
 /// ドットプログレスバーコンポーネント
 /// Primaryボタンと同じ色のグラデーションと光る効果を持つ
-struct ProgressBar: View {
+public struct ProgressBar: View {
     // MARK: - Properties
     
     /// 総ステップ数
@@ -26,7 +26,7 @@ struct ProgressBar: View {
     
     // MARK: - Body
     
-    var body: some View {
+    public var body: some View {
         HStack(spacing: spacing) {
             ForEach(0..<totalSteps, id: \.self) { index in
                 Circle()

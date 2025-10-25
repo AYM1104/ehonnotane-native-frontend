@@ -1,10 +1,3 @@
-//
-//  Book.swift
-//  StoryBook
-//
-//  Created by ayu on 2025/10/16.
-//
-
 import SwiftUI
 
 // MARK: - リファクタリング後のBook.swift
@@ -13,16 +6,20 @@ import SwiftUI
 
 // MARK: - Preview
 
+/*
 #Preview("APIから取得した絵本") {
     // APIから取得した絵本データを表示（ID=1に固定）
     if #available(iOS 15.0, *) {
-        BookFromAPI()
+        BookFromAPI(storybookId: 1)
+            .environmentObject(AuthService())
+            .environmentObject(StorybookService())
     } else {
         Text("iOS 15.0以上が必要です")
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.gray.opacity(0.3))
     }
 }
+*/
 
 #Preview("デモ絵本（ローカル）") {
     VStack(spacing: 12) {

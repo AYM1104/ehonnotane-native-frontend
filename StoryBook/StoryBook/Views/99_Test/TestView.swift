@@ -1,203 +1,143 @@
 import SwiftUI
-import UIKit
 
 struct TestView: View {
-    @StateObject private var questionService = QuestionService.shared
-    @State private var storySettingId = 89 // テスト用のID
-    @State private var isLoading = false
-    @State private var errorMessage: String?
-    @State private var currentPageIndex: Int = 0
-    @State private var answers: [String: String] = [:] // 質問ID: 回答のマッピング
-    @FocusState private var isTextFieldFocused: Bool
-    
     var body: some View {
-        ZStack(alignment: .top) {
-            // 背景
-            Background {
-                BigCharacter()
-            }
-            
-            // ヘッダー
-            Header()
-            
-            // メインカード（画面下部に配置）
-            VStack {
-                // ヘッダーの高さ分のスペースを確保
-                Spacer()
-                    .frame(height: 80)
-                
-                // メインテキスト
-                MainText(text: "どんな え でえほんを")
-                MainText(text: "つくろうかな？")
-                Spacer()
-                
-                // ガラス風カードを表示
-                mainCard(width: .screen95) {
-                    VStack(spacing: 16) {
-                        Spacer()
-                        
-                        // ページカール効果で質問を表示
-                        PageCurl(
-                            pages: createQuestionPages(),
-                            currentIndex: $currentPageIndex
+        ZStack {
+            backgroundGradient
+                .ignoresSafeArea()
+
+            accentBubbles
+
+            GlassCard()
+                .padding(.horizontal, 24)
+        }
+    }
+
+    private var backgroundGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(red: 0.10, green: 0.14, blue: 0.32),
+                Color(red: 0.03, green: 0.06, blue: 0.16)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private var accentBubbles: some View {
+        ZStack {
+            Circle()
+                .fill(Color(red: 0.80, green: 0.38, blue: 0.96).opacity(0.55))
+                .frame(width: 260)
+                .blur(radius: 80)
+                .offset(x: -140, y: -220)
+
+            Circle()
+                .fill(Color(red: 0.32, green: 0.68, blue: 0.94).opacity(0.45))
+                .frame(width: 280)
+                .blur(radius: 100)
+                .offset(x: 140, y: 200)
+        }
+    }
+}
+
+struct GlassCard: View {
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .background(
+                    RoundedRectangle(cornerRadius: 32, style: .continuous)
+                        .fill(Color.white.opacity(0.12))
+                        .blur(radius: 22)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.55),
+                                    Color.white.opacity(0.18)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1.2
                         )
-                        .background(Color.clear)
-                        .clipShape(RoundedRectangle(cornerRadius: 35))
-                        .onChange(of: currentPageIndex) { _, newIndex in
-                            // ページが変更されたら質問サービスも更新
-                            if newIndex != questionService.currentQuestionIndex {
-                                questionService.currentQuestionIndex = newIndex
-                            }
-                        }
-                        .onChange(of: questionService.currentQuestionIndex) { _, newIndex in
-                            // 質問サービスが変更されたらページも更新
-                            if newIndex != currentPageIndex {
-                                currentPageIndex = newIndex
-                            }
-                        }
-                        
-                        
-                        
-                        // プログレスバー
-                        ProgressBar(
-                            totalSteps: max(questionService.currentQuestions.count, 1),
-                            currentStep: questionService.currentQuestionIndex
-                        )
-                        .padding(.top, 8)
-                        
-                        
-                        Spacer()
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .stroke(Color.white.opacity(0.35), lineWidth: 0.6)
+                        .blendMode(.screen)
+                        .opacity(0.9)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .fill(Color.white.opacity(0.18))
+                        .blur(radius: 36)
+                        .opacity(0.9)
+                        .padding(.bottom, 140)
+                )
+                .shadow(color: Color.black.opacity(0.25), radius: 28, x: 0, y: 18)
+
+            VStack(alignment: .leading, spacing: 18) {
+                Text("Glassmorphism Card")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.9))
+
+                Text("半透明の背景、柔らかな発光、繊細なボーダーで構成されたカードデザインのサンプルです。")
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundColor(Color.white.opacity(0.75))
+                    .lineSpacing(4)
+
+                Divider()
+                    .overlay(Color.white.opacity(0.35))
+
+                HStack(spacing: 14) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(Color.white.opacity(0.85))
+                        .frame(width: 40, height: 40)
+                        .background(Color.white.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("使い方のヒント")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(Color.white.opacity(0.85))
+
+                        Text("背景とのコントラストを意識しつつ、ハイライトやシャドウで立体感を演出すると印象的になります。")
+                            .font(.system(size: 13, weight: .regular))
+                            .foregroundColor(Color.white.opacity(0.7))
+                            .lineSpacing(3)
                     }
                 }
-                .padding(.horizontal, 16) // パディングを減らしてカードを広く表示
-                .padding(.bottom, -10) // 画面下部からの余白
             }
+            .padding(30)
         }
-        .onAppear {
-            loadQuestions()
-        }
-    }
-    
-    // 質問ページを作成する関数
-    private func createQuestionPages() -> [AnyView] {
-        if isLoading {
-            return [AnyView(
-                InnerCard(
-                    backgroundColor: Color.white, // 完全に不透明な白背景
-                    sections: [
-                        .init {
-                            VStack(spacing: 8) {
-                                SubText(text: "質問")
-                                SubText(text: "質問を読み込み中...")
-                            }
-                        },
-                        .init {
-                            VStack(spacing: 8) {
-                                SubText(text: "回答")
-                                TextField("読み込み中...", text: .constant(""))
-                                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                                    .padding(.horizontal, 8)
-                                    .disabled(true)
-                            }
-                        }
-                    ]
-                )
-            )]
-        } else if let errorMessage = errorMessage {
-            return [AnyView(
-                InnerCard(
-                    backgroundColor: Color.white, // 完全に不透明な白背景
-                    sections: [
-                        .init {
-                            VStack(spacing: 8) {
-                                SubText(text: "エラー")
-                                SubText(text: errorMessage)
-                                    .foregroundColor(.red)
-                            }
-                        },
-                        .init {
-                            VStack(spacing: 8) {
-                                SubText(text: "回答")
-                                TextField("エラーが発生しました", text: .constant(""))
-                                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                                    .padding(.horizontal, 8)
-                                    .disabled(true)
-                            }
-                        }
-                    ]
-                )
-            )]
-        } else if questionService.currentQuestions.isEmpty {
-            return [AnyView(
-                InnerCard(
-                    backgroundColor: Color.white, // 完全に不透明な白背景
-                    sections: [
-                        .init {
-                            VStack(spacing: 8) {
-                                SubText(text: "質問")
-                                SubText(text: "質問がありません")
-                            }
-                        },
-                        .init {
-                            VStack(spacing: 8) {
-                                SubText(text: "回答")
-                                TextField("質問を読み込んでください", text: .constant(""))
-                                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                                    .padding(.horizontal, 8)
-                                    .disabled(true)
-                            }
-                        }
-                    ]
-                )
-            )]
-        } else {
-            return questionService.currentQuestions.map { question in
-                AnyView(
-                    InnerCard(
-                        backgroundColor: Color.white, // 完全に不透明な白背景
-                        sections: [
-                            .init {
-                                VStack(spacing: 8) {
-                                    SubText(text: "質問")
-                                    SubText(text: question.question)
-                                }
-                            },
-                            .init {
-                                QuestionInputField(
-                                    question: question,
-                                    answer: Binding(
-                                        get: { answers[question.id] ?? "" },
-                                        set: { answers[question.id] = $0 }
-                                    )
-                                )
-                            }
-                        ]
+        .frame(maxWidth: 360)
+        .overlay(alignment: .topTrailing) {
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.7),
+                            Color.white.opacity(0.05)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
                     )
                 )
-            }
+                .frame(width: 120, height: 120)
+                .blur(radius: 8)
+                .offset(x: 60, y: -60)
         }
-    }
-    
-    // 質問を読み込む関数
-    private func loadQuestions() {
-        isLoading = true
-        errorMessage = nil
-        
-        Task {
-            do {
-                let response = try await questionService.fetchQuestions(storySettingId: storySettingId)
-                await MainActor.run {
-                    questionService.currentQuestions = response.questions
-                    questionService.currentQuestionIndex = 0
-                    currentPageIndex = 0
-                    isLoading = false
-                }
-            } catch {
-                await MainActor.run {
-                    errorMessage = error.localizedDescription
-                    isLoading = false
-                }
-            }
+        .overlay(alignment: .bottomLeading) {
+            Circle()
+                .fill(Color.white.opacity(0.18))
+                .frame(width: 60, height: 60)
+                .blur(radius: 6)
+                .offset(x: -30, y: 30)
         }
     }
 }

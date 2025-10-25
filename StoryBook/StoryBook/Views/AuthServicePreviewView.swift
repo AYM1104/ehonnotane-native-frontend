@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 /// AuthServiceのプレビュー用テストビュー
 struct AuthServicePreviewView: View {
@@ -120,6 +121,8 @@ struct AuthServicePreviewView: View {
     }
 }
 
+/*
 #Preview {
     AuthServicePreviewView()
 }
+*/

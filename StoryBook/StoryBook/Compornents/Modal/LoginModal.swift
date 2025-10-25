@@ -9,6 +9,15 @@ struct LoginModal: View {
     /// モーダルの表示状態を管理
     @Binding var isPresented: Bool
     
+    /// キーボードの表示状態を管理
+    @Binding var isKeyboardVisible: Bool
+    
+    /// 表示中のキーボードの高さ
+    let keyboardHeight: CGFloat
+    
+    /// フォーカス状態（メールアドレス: 0, パスワード: 1）
+    @Binding var focusedField: Int
+    
     /// ログインアクション
     let onLogin: () -> Void
     
@@ -21,16 +30,22 @@ struct LoginModal: View {
     @State private var isFormValid = false
     @State private var showContent = false // コンテンツの表示アニメーション用
     
-    // Google OAuthサービス
-    @StateObject private var googleOAuthService = GoogleOAuthService()
-    
-    // MARK: - Body
-    
     var body: some View {
         GeometryReader { geometry in
+            let safeAreaBottom = geometry.safeAreaInsets.bottom
+            // フォーカス状態に応じてキーボード上昇率を調整（メールアドレス: 0.5, パスワード: 0.7）
+            let keyboardMultiplier = focusedField == 1 ? 0.7 : 0.5
+            let keyboardOverlap = max(0, keyboardHeight * keyboardMultiplier)
+            
+            let modalShape = UnevenRoundedRectangle(
+                topLeadingRadius: 50,
+                bottomLeadingRadius: 0,
+                bottomTrailingRadius: 0,
+                topTrailingRadius: 50
+            )
             ZStack {
                 // ボトムシート用の角丸（上部のみ、より緩やかなカーブ）
-                UnevenRoundedRectangle(topLeadingRadius: 50, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 50)
+                modalShape
                     .fill(
                         // bg-gradient-to-br from-white/15 via-white/5 to-white/10
                         LinearGradient(
@@ -46,39 +61,52 @@ struct LoginModal: View {
                     .overlay(
                         // ガラス風の内側ハイライト
                         // bg-gradient-to-b from-white/8 via-white/2 to-white/5
-                        LinearGradient(
-                            gradient: Gradient(stops: [
-                                .init(color: Color.white.opacity(0.08), location: 0.0),
-                                .init(color: Color.white.opacity(0.02), location: 0.5),
-                                .init(color: Color.white.opacity(0.05), location: 1.0)
-                            ]),
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
+                        modalShape
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(stops: [
+                                        .init(color: Color.white.opacity(0.08), location: 0.0),
+                                        .init(color: Color.white.opacity(0.02), location: 0.5),
+                                        .init(color: Color.white.opacity(0.05), location: 1.0)
+                                    ]),
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                            .blendMode(.plusLighter)
                     )
-                    .overlay(
-                        // inset シャドウのシミュレーション（上部の内側白ライン）
-                        // inset_0_1px_0_rgba(255,255,255,0.2)
-                        VStack {
-                            Rectangle()
-                                .fill(Color.white.opacity(0.2))
-                                .frame(height: 1)
-                            Spacer()
-                        }
-                    )
-                    .overlay(
-                        // 白い枠線（border border-white/30）
-                        // より光らせるために不透明度を上げてグロー効果を追加
-                        UnevenRoundedRectangle(topLeadingRadius: 50, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 50)
-                            .stroke(Color.white.opacity(0.6), lineWidth: 1.5)
-                            .shadow(color: Color.white.opacity(0.5), radius: 3, x: 0, y: 0)
-                            .shadow(color: Color.white.opacity(0.3), radius: 6, x: 0, y: 0)
-                    )
+                    // .overlay(
+                    //     // inset シャドウのシミュレーション（上部の内側白ライン）
+                    //     // inset_0_1px_0_rgba(255,255,255,0.2)
+                    //     VStack {
+                    //         Rectangle()
+                    //             .fill(Color.white.opacity(0.2))
+                    //             .frame(height: 1)
+                    //         Spacer()
+                    //     }
+                    //     .clipShape(
+                    //         UnevenRoundedRectangle(
+                    //             topLeadingRadius: 50,
+                    //             bottomLeadingRadius: 0,
+                    //             bottomTrailingRadius: 0,
+                    //             topTrailingRadius: 50
+                    //         )
+                    //     )
+                    // )
+                     .overlay(
+                         // 角丸に沿ったグロー効果
+                         UnevenRoundedRectangle(topLeadingRadius: 50, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 50)
+                             .stroke(Color.white.opacity(0.8), lineWidth: 2)
+                             .shadow(color: Color.white.opacity(0.8), radius: 8, x: 0, y: 0)
+                             .shadow(color: Color.white.opacity(0.6), radius: 15, x: 0, y: 0)
+                             .shadow(color: Color.white.opacity(0.4), radius: 25, x: 0, y: 0)
+                             .shadow(color: Color.blue.opacity(0.3), radius: 35, x: 0, y: 0)
+                     )
                     // mainCardと同じ強い輝き効果（複数のシャドウ）
-                    .shadow(color: Color.black.opacity(0.2), radius: 20, x: 0, y: 8)
-                    .shadow(color: Color.white.opacity(0.3), radius: 15, x: 0, y: 0)
-                    .shadow(color: Color(red: 102/255, green: 126/255, blue: 234/255).opacity(0.4), radius: 30, x: 0, y: 0)
-                    .shadow(color: Color.white.opacity(0.2), radius: 45, x: 0, y: 0)
+                     .shadow(color: Color.black.opacity(0.2), radius: 50, x: 0, y: 8)
+                     .shadow(color: Color.white.opacity(0.3), radius: 50, x: 0, y: 0)
+                     .shadow(color: Color(red: 102/255, green: 126/255, blue: 234/255).opacity(0.4), radius: 30, x: 0, y: 0)
+                     .shadow(color: Color.white.opacity(0.2), radius: 45, x: 0, y: 0)
                 
                 // コンテンツ構造
                 VStack {
@@ -114,6 +142,12 @@ struct LoginModal: View {
                                     if isValid {
                                         errorMessage = nil
                                     }
+                                },
+                                onKeyboardVisibleChanged: { isVisible in
+                                    isKeyboardVisible = isVisible
+                                },
+                                onFocusChanged: { fieldIndex in
+                                    focusedField = fieldIndex
                                 }
                             )
                             .offset(y: showContent ? 0 : 30)
@@ -131,7 +165,7 @@ struct LoginModal: View {
                             }
                             
                             // Google OAuthエラーメッセージ表示
-                            if let googleError = googleOAuthService.errorMessage, !googleError.isEmpty {
+                            if let googleError = errorMessage, !googleError.isEmpty {
                                 Text(googleError)
                                     .font(.caption)
                                     .foregroundColor(.red)
@@ -193,7 +227,7 @@ struct LoginModal: View {
                             
                             // Googleログインボタン
                             Button(action: {
-                                googleOAuthService.login()
+                                onLogin()
                             }) {
                                 HStack(spacing: 12) {
                                     // Googleアイコン
@@ -218,8 +252,8 @@ struct LoginModal: View {
                                         )
                                 )
                             }
-                            .disabled(googleOAuthService.isLoading)
-                            .opacity(googleOAuthService.isLoading ? 0.6 : 1.0)
+                            .disabled(false)
+                            .opacity(1.0)
                             .scaleEffect(showContent ? 1.0 : 0.8)
                             .opacity(showContent ? 1.0 : 0.0)
                             .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.8), value: showContent)
@@ -237,7 +271,8 @@ struct LoginModal: View {
             .padding(.horizontal, 0) // 横幅を画面いっぱいに
             .position(x: geometry.size.width / 2, y: geometry.size.height - (geometry.size.height * (2.0/3.0)) / 2) // 画面下に配置
             .ignoresSafeArea(.all, edges: .bottom) // 下部のセーフエリアを完全に無視
-            .offset(y: geometry.safeAreaInsets.bottom) // セーフエリア分をオフセット
+            .offset(y: safeAreaBottom - keyboardOverlap) // デフォルトはセーフエリア分を考慮、キーボード表示時は上に移動
+            .animation(.easeInOut(duration: 0.3), value: keyboardHeight)
         }
         .onAppear {
             // モーダル表示時のアニメーション開始
@@ -253,18 +288,6 @@ struct LoginModal: View {
             errorMessage = nil
             isFormValid = false
             showContent = false
-        }
-        .onChange(of: googleOAuthService.isLoggedIn) { _, isLoggedIn in
-            // Googleログインが成功した場合
-            if isLoggedIn {
-                print("✅ Googleログイン成功 - モーダルを閉じます")
-                
-                // Supabase登録処理が完了するまで少し待つ
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    onLogin() // ログイン成功時のコールバックを実行
-                    isPresented = false // モーダルを閉じる
-                }
-            }
         }
     }
 }
@@ -309,6 +332,9 @@ struct LoginModal: View {
             
             LoginModal(
                 isPresented: $showModal,
+                isKeyboardVisible: .constant(false),
+                keyboardHeight: 0,
+                focusedField: .constant(0),
                 onLogin: {
                     print("ログインボタンが押されました")
                     withAnimation(.easeInOut(duration: 0.3)) {

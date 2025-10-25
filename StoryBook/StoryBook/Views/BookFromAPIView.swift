@@ -13,20 +13,27 @@ import Combine
 /// APIから取得した絵本データを表示するビューの共通ロジック
 @available(iOS 15.0, macOS 12.0, *)
 class BookFromAPIViewModel: ObservableObject {
-    // テスト用にID=1に固定
-    private let storybookId: Int = 1
-    @Published private var storybookService = StorybookService.shared
+    // storybookIdを動的に受け取る
+    private let storybookId: Int
+    private let storybookService: StorybookService
     @Published var storybook: StorybookResponse?
     @Published var story: Story?
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var isGeneratingImages = false
     @Published var generationMessage = "絵本の絵を描いています..."
+    @Published var currentPageIndex: Int = 0
     
     // タイトル更新コールバック（オプショナル）
     var onTitleUpdate: ((String) -> Void)?
     
-    init(onTitleUpdate: ((String) -> Void)? = nil) {
+    init(
+        storybookId: Int,
+        storybookService: StorybookService = .shared,
+        onTitleUpdate: ((String) -> Void)? = nil
+    ) {
+        self.storybookId = storybookId
+        self.storybookService = storybookService
         self.onTitleUpdate = onTitleUpdate
     }
     
@@ -114,7 +121,7 @@ class BookFromAPIViewModel: ObservableObject {
                         contentInset: 0,
                         fit: .fill,
                         text: page.text,
-                        textAreaHeight: 120
+                        textAreaHeight: 150
                     )
                 )
             } else {
@@ -138,9 +145,16 @@ class BookFromAPIViewModel: ObservableObject {
 /// APIから取得した絵本データを表示するビュー
 @available(iOS 15.0, macOS 12.0, *)
 public struct BookFromAPI: View {
-    @StateObject private var viewModel = BookFromAPIViewModel()
+    @StateObject private var viewModel: BookFromAPIViewModel
     
-    public init() {}
+    public init(storybookId: Int, storybookService: StorybookService = .shared) {
+        self._viewModel = StateObject(
+            wrappedValue: BookFromAPIViewModel(
+                storybookId: storybookId,
+                storybookService: storybookService
+            )
+        )
+    }
     
     public var body: some View {
         BookFromAPIView(viewModel: viewModel)
@@ -152,8 +166,18 @@ public struct BookFromAPI: View {
 public struct BookFromAPIWithTitleUpdate: View {
     @StateObject private var viewModel: BookFromAPIViewModel
     
-    public init(onTitleUpdate: @escaping (String) -> Void) {
-        self._viewModel = StateObject(wrappedValue: BookFromAPIViewModel(onTitleUpdate: onTitleUpdate))
+    public init(
+        storybookId: Int,
+        storybookService: StorybookService = .shared,
+        onTitleUpdate: @escaping (String) -> Void
+    ) {
+        self._viewModel = StateObject(
+            wrappedValue: BookFromAPIViewModel(
+                storybookId: storybookId,
+                storybookService: storybookService,
+                onTitleUpdate: onTitleUpdate
+            )
+        )
     }
     
     public var body: some View {
@@ -223,14 +247,23 @@ private struct BookFromAPIView: View {
                     // 絵本コンテンツ
                     Book(
                         pages: viewModel.createBookPages(from: story),
-                        title: story.title,
-                        showTitle: false,
-                        heightRatio: 0.9,
-                        aspectRatio: 10/16.0,
-                        cornerRadius: 16,
-                        paperColor: Color(red: 252/255, green: 252/255, blue: 252/255)
+                        // title: story.title,
+                        heightRatio: 1.0,
+                        cornerRadius: 50,
+                        paperColor: Color(red: 252/255, green: 252/255, blue: 252/255),
+                        onPageChange: { index in
+                            viewModel.currentPageIndex = index
+                        }
                     )
+                    .padding(.horizontal, 10)
                     .opacity(viewModel.isGeneratingImages ? 0.7 : 1.0)
+                    
+                    // プログレスバー
+                    ProgressBar(
+                        totalSteps: story.pages.count,
+                        currentStep: viewModel.currentPageIndex
+                    )
+                    .padding(.top, 16)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
